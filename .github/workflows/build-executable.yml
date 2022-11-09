@@ -117,6 +117,7 @@ jobs:
           # npx prebuild-install --platform=darwin --arch=arm64 || npx prebuild --platform=darwin --arch=arm64
           # cd ../..;
           
+          mkdir -p ./node_modules/better-sqlite3/build/Release/
           rsync -rvzhP ./Release/ ./node_modules/better-sqlite3/build/Release/
           npx pkg . --compress GZip -t node16-macos-arm64 -o Noco-macos-arm64
           mv ./Noco-macos-arm64 ./mac-dist/
