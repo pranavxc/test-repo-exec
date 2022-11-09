@@ -6,7 +6,7 @@ on:
 
   
 jobs:
-  sign-mac-executables:
+  gen-mac-arm64-binaries:
     runs-on: macos-latest
     steps:
       - uses: actions/setup-python@v4
@@ -28,14 +28,6 @@ jobs:
 
           npm i -E nocodb-daily@0.98.4-pr-4333-20221109-1357
 
-          # install npm dependendencies
-          npm i
-
-          # clean up code to optimize size
-          # npx modclean --patterns="default:*" --ignore="nc-lib-gui-daily/**,dayjs/**,express-status-monitor/**,better-sqlite3/**" --run
-
-
-          ls
           cat ./package.json
           
           
@@ -43,20 +35,175 @@ jobs:
           cd ./node_modules/better-sqlite3;
           rm -r ./build
           npx prebuild --arch=arm64
-          cd ../..;
+
+
+      - uses: actions/upload-artifact@master
+        with:
+          name: ${{ github.event.inputs.tag || inputs.tag }}-bin
+          path: ./node_modules/better-sqlite3/build/Release
+          retention-days: 1
+          
+  build-executables:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          token: ${{ secrets.NC_GITHUB_TOKEN }}
+          repository: 'nocodb/nocodb-timely'
+      - name: Cache node modules
+        id: cache-npm
+        uses: actions/cache@v3
+        env:
+          cache-name: cache-node-modules
+        with:
+          # npm cache files are stored in `~/.npm` on Linux/macOS
+          path: ~/.npm
+          key: ${{ runner.os }}-build-${{ env.cache-name }}-${{ hashFiles('**/package-lock.json') }}
+          restore-keys: |
+            ${{ runner.os }}-build-${{ env.cache-name }}-
+            ${{ runner.os }}-build-
+            ${{ runner.os }}-
+            
+            
+
+      - uses: actions/download-artifact@master
+        with:
+          name: ${{ github.event.inputs.tag || inputs.tag }}-bin
+          path: ./Release
+
+      - name: Cache pkg modules
+        id: cache-pkg
+        uses: actions/cache@v3
+        env:
+          cache-name: cache-pkg
+        with:
+          # pkg cache files are stored in `~/.pkg-cache`
+          path: ~/.pkg-cache
+          key: ${{ runner.os }}-build-${{ env.cache-name }}-${{ hashFiles('**/package-lock.json') }}
+          restore-keys: |
+            ${{ runner.os }}-build-${{ env.cache-name }}-
+            ${{ runner.os }}-build-
+            ${{ runner.os }}-
+      - name: Install QEMU and ldid
+        run: |
+          sudo apt update
+          # Install qemu
+          sudo apt install qemu binfmt-support qemu-user-static
+          # install ldid
+          git clone https://github.com/daeken/ldid.git
+          cd ./ldid
+          ./make.sh
+          sudo cp ./ldid /usr/local/bin
+
+      - uses: actions/setup-node@v3
+        with:
+          node-version: 16
+
+      - name: Update nocodb-timely
+        env:
+          TAG: ${{ github.event.inputs.tag || inputs.tag }}
+        run: |
+          npm i -E nocodb-daily@$TAG
+
+          git config user.name 'github-actions[bot]'
+          git config user.email 'github-actions[bot]@users.noreply.github.com'
+
+          git commit package.json -m "Update to $TAG"
+          git tag $TAG
+          git push --tags
+
+
+      - name : Install dependencies and build executables
+        run: |
+          # install npm dependendencies
+          npm i
+
+          # clean up code to optimize size
+          npx modclean --patterns="default:*" --ignore="nc-lib-gui-daily/**,dayjs/**,express-status-monitor/**,better-sqlite3/**" --run
+
+          mkdir ./dist
+          mkdir ./mac-dist
+
+          # build executables
+          # cd ./node_modules/better-sqlite3;
+          # rm -r ./build
+          # npx prebuild-install --platform=darwin --arch=arm64 || npx prebuild --platform=darwin --arch=arm64
+          # cd ../..;
+          
+          rsync -rvzhP ./Release/ ./node_modules/better-sqlite3/build/Release/
           npx pkg . --compress GZip -t node16-macos-arm64 -o Noco-macos-arm64
           mv ./Noco-macos-arm64 ./mac-dist/
 
+          cd ./node_modules/better-sqlite3;
+          rm -r ./build
+          npx prebuild-install --platform=darwin --arch=x64 || npx prebuild --platform=darwin --arch=x64
+          cd ../..;
+          npx pkg . --compress GZip -t node16-macos-x64 -o Noco-macos-x64
+          mv ./Noco-macos-x64 ./mac-dist/
 
+          cd ./node_modules/better-sqlite3;
+          rm -r ./build
+          npx prebuild-install --platform=linux --arch=x64 || npx prebuild --platform=linux --arch=x64
+          cd ../..;
+          npx pkg . --compress GZip -t node16-linux-x64 -o Noco-linux-x64
+          mv ./Noco-linux-x64 ./dist/
 
-      - name: Sign macOS executables
-        run: |
-          /usr/bin/codesign --force -s - ./mac-dist/Noco-macos-arm64 -v
+          cd ./node_modules/better-sqlite3;
+          rm -r ./build
+          npx prebuild-install --platform=linux --arch=arm64 || npx prebuild --platform=linux --arch=arm64
+          cd ../..;
+          npx pkg . --compress GZip -t node16-linux-arm64 -o Noco-linux-arm64
+          mv ./Noco-linux-arm64 ./dist/
 
       - uses: actions/upload-artifact@master
         with:
           name: ${{ github.event.inputs.tag || inputs.tag }}
           path: mac-dist
           retention-days: 1
+          
+      - uses: actions/upload-artifact@master
+        with:
+          name: ${{ github.event.inputs.tag || inputs.tag }}-dist
+          path: dist
+          retention-days: 1
+
+  sign-mac-executables:
+    runs-on: macos-latest
+    needs: build-executables
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          token: ${{ secrets.NC_GITHUB_TOKEN }}
+          repository: 'nocodb/nocodb-timely'
+
+      - uses: actions/setup-node@v3
+        with:
+          node-version: 16
+
+      - uses: actions/download-artifact@master
+        with:
+          name: ${{ github.event.inputs.tag || inputs.tag }}
+          path: mac-dist
+
+
+      - name: Sign macOS executables
+        run: |
+          /usr/bin/codesign --force -s - ./mac-dist/Noco-macos-arm64 -v
+          /usr/bin/codesign --force -s - ./mac-dist/Noco-macos-x64 -v
+
+      - uses: actions/upload-artifact@master
+        with:
+          name: ${{ github.event.inputs.tag || inputs.tag }}-mac-dist
+          path: mac-dist
+          retention-days: 1
+
+
+
+
+
+
+
+
+
 
 
