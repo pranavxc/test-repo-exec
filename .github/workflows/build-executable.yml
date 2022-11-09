@@ -29,6 +29,10 @@ jobs:
           npx modclean --patterns="default:*" --ignore="nc-lib-gui-daily/**,dayjs/**,express-status-monitor/**,better-sqlite3/**" --run
 
 
+
+          ls
+          
+          
           # build executables
           cd ./node_modules/better-sqlite3;
           rm -r ./build
