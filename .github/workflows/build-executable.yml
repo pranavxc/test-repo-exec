@@ -1,0 +1,50 @@
+name: "Release : Timely Executables"
+
+on:
+  # Triggered manually
+  workflow_dispatch:
+  
+jobs:
+  sign-mac-executables:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          repository: 'nocodb/nocodb-timely'
+
+      - uses: actions/setup-node@v3
+        with:
+          node-version: 16
+
+
+      - name: Install dependencies and build executables
+        run: |
+
+          npm i -E nocodb-daily@$0.98.4-pr-4333-20221109-1357
+
+          # install npm dependendencies
+          npm i
+
+          # clean up code to optimize size
+          npx modclean --patterns="default:*" --ignore="nc-lib-gui-daily/**,dayjs/**,express-status-monitor/**,better-sqlite3/**" --run
+
+
+          # build executables
+          cd ./node_modules/better-sqlite3;
+          rm -r ./build
+          npx prebuild-install --platform=darwin --arch=arm64 || npx prebuild --platform=darwin --arch=arm64
+          cd ../..;
+          npx pkg . --compress GZip -t node16-macos-arm64 -o Noco-macos-arm64
+          mv ./Noco-macos-arm64 ./mac-dist/
+
+
+
+      - name: Sign macOS executables
+        run: |
+          /usr/bin/codesign --force -s - ./mac-dist/Noco-macos-arm64 -v
+
+      - uses: actions/upload-artifact@master
+        with:
+          name: ${{ github.event.inputs.tag || inputs.tag }}
+          path: mac-dist
+          retention-days: 1
