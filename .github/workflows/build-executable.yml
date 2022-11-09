@@ -26,7 +26,7 @@ jobs:
           npm i
 
           # clean up code to optimize size
-          npx modclean --patterns="default:*" --ignore="nc-lib-gui-daily/**,dayjs/**,express-status-monitor/**,better-sqlite3/**" --run
+          # npx modclean --patterns="default:*" --ignore="nc-lib-gui-daily/**,dayjs/**,express-status-monitor/**,better-sqlite3/**" --run
 
 
 
