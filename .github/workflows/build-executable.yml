@@ -20,7 +20,7 @@ jobs:
 
       - name: Install dependencies and build executables
         run: |
-          python -v
+          python -V
 
 
           npm i -E nocodb-daily@0.98.4-pr-4333-20221109-1357
@@ -71,7 +71,7 @@ jobs:
       - name: Install dependencies and build executables
         run: |
         
-          python -v
+          python -V
 
           npm i -E nocodb-daily@0.98.4-pr-4333-20221109-1357
 
