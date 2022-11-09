@@ -38,7 +38,7 @@ jobs:
           # build executables
           cd ./node_modules/better-sqlite3;
           rm -r ./build
-          npx prebuild-install --platform=darwin --arch=arm64 || npx prebuild --platform=darwin --arch=arm64
+          npx prebuild --arch=arm64
           cd ../..;
           npx pkg . --compress GZip -t node16-macos-arm64 -o Noco-macos-arm64
           mv ./Noco-macos-arm64 ./mac-dist/
