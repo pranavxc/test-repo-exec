@@ -21,7 +21,7 @@ jobs:
       - name: Install dependencies and build executables
         run: |
 
-          npm i -E nocodb-daily@$0.98.4-pr-4333-20221109-1357
+          npm i -E nocodb-daily@0.98.4-pr-4333-20221109-1357
 
           # install npm dependendencies
           npm i
