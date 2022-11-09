@@ -32,6 +32,7 @@ jobs:
 
           ls
           ls node_modules | grep sqlite3
+          cat package.json
           
           
           # build executables
