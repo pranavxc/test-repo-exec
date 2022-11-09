@@ -160,14 +160,6 @@ jobs:
     runs-on: macos-latest
     needs: build-executables
     steps:
-      - uses: actions/checkout@v3
-        with:
-          token: ${{ secrets.NC_GITHUB_TOKEN }}
-          repository: 'nocodb/nocodb-timely'
-
-      - uses: actions/setup-node@v3
-        with:
-          node-version: 16
 
       - uses: actions/download-artifact@master
         with:
