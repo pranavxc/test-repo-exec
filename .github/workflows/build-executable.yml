@@ -1,8 +1,9 @@
 name: "Release : Timely Executables"
 
 on:
-  # Triggered manually
-  workflow_dispatch:
+  push
+
+
   
 jobs:
   sign-mac-executables:
